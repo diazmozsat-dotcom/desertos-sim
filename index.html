@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DESERT OS Core</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body, html {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background-color: #0d0905;
+        }
+
+        #os-wrapper {
+            width: 100vw;
+            height: 100vh;
+            background: url('https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        @media screen and (orientation: portrait) {
+            #os-wrapper {
+                position: absolute;
+                top: 0;
+                left: 100vw;
+                width: 100vh;
+                height: 100vw;
+                transform: rotate(90deg);
+                transform-origin: top left;
+            }
+        }
+
+        /* Top Status Bar */
+        .top-bar {
+            height: 32px;
+            background: rgba(20, 15, 10, 0.9);
+            backdrop-filter: blur(15px);
+            color: #f0e6d2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(220, 150, 80, 0.25);
+            z-index: 9000;
+        }
+
+        .top-bar-left, .top-bar-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .menu-dropdown-btn {
+            background: rgba(230, 140, 60, 0.25);
+            border: 1px solid rgba(230, 140, 60, 0.4);
+            color: #f3d5b5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .menu-dropdown-btn:hover {
+            background: rgba(230, 140, 60, 0.45);
+        }
+
+        /* Main Start Menu Modal */
+        .start-menu {
+            position: absolute;
+            top: 36px;
+            left: 10px;
+            width: 220px;
+            background: rgba(25, 18, 12, 0.96);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(230, 140, 60, 0.35);
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+            display: none;
+            flex-direction: column;
+            padding: 8px 0;
+            z-index: 10000;
+            color: #eee;
+        }
+
+        .start-menu.show { display: flex; }
+
+        .menu-option {
+            padding: 9px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .menu-option:hover {
+            background: #e67e22;
+            color: #fff;
+        }
+
+        .menu-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 4px 0;
+        }
+
+        /* Desktop Grid */
+        .desktop {
+            flex-grow: 1;
+            position: relative;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-content: flex-start;
+        }
+
+        .desktop-icon {
+            width: 76px;
+            height: 86px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #fff;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+            text-align: center;
+            padding: 6px;
+            transition: transform 0.1s, background 0.2s;
+        }
+
+        .desktop-icon:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .desktop-icon .icon-img {
+            font-size: 34px;
+            margin-bottom: 4px;
+        }
+
+        .desktop-icon span {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Window Styling */
+        .window {
+            position: absolute;
+            width: 580px;
+            height: 380px;
+            background: rgba(26, 20, 16, 0.95);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(230, 140, 60, 0.3);
+            border-radius: 10px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.8);
+            color: #f5ebe6;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        .window.active { display: flex; }
+
+        .window-header {
+            background: rgba(45, 32, 22, 0.85);
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(230, 140, 60, 0.2);
+            cursor: move;
+        }
+
+        .window-title { font-size: 13px; font-weight: 600; color: #f3d5b5; }
+
+        .control-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .btn-close { background: #ff5f56; }
+
+        .window-body {
+            padding: 15px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+        }
+
+        .terminal-body {
+            background: #0d0b09;
+            font-family: 'Courier New', Courier, monospace;
+            color: #ffb703;
+            line-height: 1.4;
+        }
+
+        .terminal-input {
+            background: transparent;
+            border: none;
+            color: #ffb703;
+            font-family: inherit;
+            outline: none;
+            width: 100%;
+            font-size: 13px;
+        }
+
+        /* Bottom Dock */
+        .dock-container {
+            display: flex;
+            justify-content: center;
+            padding-bottom: 12px;
+            z-index: 9000;
+        }
+
+        .dock {
+            background: rgba(28, 20, 14, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(230, 140, 60, 0.3);
+            padding: 6px 14px;
+            border-radius: 22px;
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .dock-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 22px;
+            transition: transform 0.2s;
+        }
+
+        .dock-icon:hover {
+            transform: scale(1.15) translateY(-4px);
+            background: rgba(230, 140, 60, 0.25);
+        }
+
+        /* Calculator Styles */
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .calc-btn {
+            padding: 14px;
+            font-size: 16px;
+            border: none;
+            background: rgba(255,255,255,0.08);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .calc-btn:hover { background: rgba(230, 140, 60, 0.4); }
+
+        /* Settings Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 22px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #444; transition: .3s; border-radius: 22px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #e67e22; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        .fm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 15px; }
+        .fm-item { display: flex; flex-direction: column; align-items: center; padding: 10px; border-radius: 8px; cursor: pointer; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .fm-item:hover { background: rgba(230, 140, 60, 0.2); }
+    </style>
+</head>
+<body>
+
+<div id="os-wrapper">
+    
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <div class="menu-dropdown-btn" onclick="toggleStartMenu(event)">
+                <span>🏜️</span>
+                <span>Desert Menu</span>
+            </div>
+        </div>
+        <div class="top-bar-right">
+            <span id="network-status">📶 Online</span>
+            <span id="battery-status">🔋 100%</span>
+            <span id="clock">12:00 PM</span>
+        </div>
+    </div>
+
+    <!-- Start Menu Dropdown -->
+    <div class="start-menu" id="startMenu">
+        <div class="menu-option" onclick="openWindow('settings-win'); toggleStartMenu();">⚙️ Settings</div>
+        <div class="menu-option" onclick="openWindow('calc-win'); toggleStartMenu();">🧮 Calculator</div>
+        <div class="menu-option" onclick="openWindow('terminal-win'); toggleStartMenu();">🖥️ Terminal</div>
+        <div class="menu-option" onclick="openWindow('files-win'); toggleStartMenu();">📁 Files</div>
+        <div class="menu-option" onclick="openWindow('browser-win'); toggleStartMenu();">🌐 Browser</div>
+        <div class="menu-option" onclick="openWindow('pong-win'); toggleStartMenu();">🏓 Pong Game</div>
+        <div class="menu-option" onclick="openWindow('monitor-win'); toggleStartMenu();">📊 System Monitor</div>
+        <div class="menu-divider"></div>
+        <div class="menu-option" onclick="location.reload();">🔄 Restart OS</div>
+    </div>
+
+    <!-- Desktop -->
+    <div class="desktop" id="desktop">
+        <div class="desktop-icon" onclick="openWindow('settings-win')">
+            <div class="icon-img">⚙️</div>
+            <span>Settings</span>
+        </div>
+
+        <div class="desktop-icon" onclick="openWindow('files-win')">
+            <div class="icon-img">📁</div>
+            <span>Files</span>
+        </div>
+
+        <div class="desktop-icon" onclick="openWindow('terminal-win')">
+            <div class="icon-img">🖥️</div>
+            <span>Terminal</span>
+        </div>
+
+        <div class="desktop-icon" onclick="openWindow('browser-win')">
+            <div class="icon-img">🌐</div>
+            <span>Browser</span>
+        </div>
+
+        <div class="desktop-icon" onclick="openWindow('calc-win')">
+            <div class="icon-img">🧮</div>
+            <span>Calculator</span>
+        </div>
+
+        <div class="desktop-icon" onclick="openWindow('pong-win')">
+            <div class="icon-img">🏓</div>
+            <span>Pong Game</span>
+        </div>
+
+        <!-- Settings Window -->
+        <div class="window" id="settings-win" style="top: 12%; left: 15%; width: 420px; height: 350px;">
+            <div class="window-header" onmousedown="dragStart(event, 'settings-win')">
+                <div class="window-title">⚙️ Control Center & Settings</div>
+                <div class="window-controls">
+                    <span class="control-btn btn-close" onclick="closeWindow('settings-win')"></span>
+                </div>
+            </div>
+            <div class="window-body">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <div>
+                        <strong>Internet Connection</strong>
+                        <div style="font-size:11px; opacity:0.7;">Enable Wi-Fi / Web Access</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="internet-toggle" checked onchange="toggleInternetSetting()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <strong>Desktop Wallpaper</strong>
+                    <div style="display:flex; gap:10px; margin-top:8px;">
+                        <button onclick="setWallpaper(0)" style="padding:6px 12px; background:#e67e22; border:none; color:white; border-radius:4px;">Desert Dunes</button>
+                        <button onclick="setWallpaper(1)" style="padding:6px 12px; background:rgba(255,255,255,0.1); border:1px solid #444; color:white; border-radius:4px;">Night Sky</button>
+                        <button onclick="setWallpaper(2)" style="padding:6px 12px; background:rgba(255,255,255,0.1); border:1px solid #444; color:white; border-radius:4px;">Mountains</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; font-size:12px; opacity:0.8; background:rgba(0,0,0,0.3); padding:10px; border-radius:6px;">
+                    <div>OS Architecture: Alpine-Linux Virtual UI</div>
+                    <div>Version: DESERT OS v2.0</div>
+                    <div>RAM Total: 512 MB (Simulated)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calculator Window -->
+        <div class="window" id="calc-win" style="top: 15%; left: 30%; width: 300px; height: 380px;">
+            <div class="window-header" onmousedown="dragStart(event, 'calc-win')">
+                <div class="window-title">🧮 Calculator</div>
+                <div class="window-controls">
+                    <span class="control-btn btn-close" onclick="closeWindow('calc-win')"></span>
+                </div>
+            </div>
+            <div class="window-body">
+                <input type="text" id="calc-display" readonly value="0" style="width:100%; height:45px; background:#111; color:#ffb703; text-align:right; font-size:22px; padding:8px; border:1px solid rgba(255,255,255,0.1); border-radius:6px; outline:none;">
+                <div class="calc-grid">
+                    <button class="calc-btn" onclick="calcClear()">C</button>
+                    <button class="calc-btn" onclick="calcInput('/')">/</button>
+                    <button class="calc-btn" onclick="calcInput('*')">*</button>
+                    <button class="calc-btn" onclick="calcInput('-')">-</button>
+                    <button class="calc-btn" onclick="calcInput('7')">7</button>
+                    <button class="calc-btn" onclick="calcInput('8')">8</button>
+                    <button class="calc-btn" onclick="calcInput('9')">9</button>
+                    <button class="calc-btn" onclick="calcInput('+')">+</button>
+                    <button class="calc-btn" onclick="calcInput('4')">4</button>
+                    <button class="calc-btn" onclick="calcInput('5')">5</button>
+                    <button class="calc-btn" onclick="calcInput('6')">6</button>
+                    <button class="calc-btn" onclick="calcEval()" style="grid-row: span 2; background:#e67e22; height:100%;">=</button>
+                    <button class="calc-btn" onclick="calcInput('1')">1</button>
+                    <button class="calc-btn" onclick="calcInput('2')">2</button>
+                    <button class="calc-btn" onclick="calcInput('3')">3</button>
+                    <button class="calc-btn" onclick="calcInput('0')" style="grid-column: span 2;">0</button>
+                    <button class="calc-btn" onclick="calcInput('.')">.</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Manager Window -->
+        <div class="window" id="files-win" style="top: 15%; left: 20%;">
+            <div class="window-header" onmousedown="dragStart(event, 'files-win')">
+                <div class="window-title">File Manager - /home/user</div>
+                <div class="window-controls">
+                    <span class="control-btn btn-close" onclick="closeWindow('files-win')"></span>
+                </div>
+            </div>
+            <div class="window-body">
+                <div class="fm-grid">
+                    <div class="fm-item" onclick="alert('Folder: Documents')"><span style="font-size:28px">📁</span><span style="font-size:11px">Documents</span></div>
+                    <div class="fm-item" onclick="alert('Folder: Downloads')"><span style="font-size:28px">📁</span><span style="font-size:11px">Downloads</span></div>
+                    <div class="fm-item" onclick="alert('Folder: Pictures')"><span style="font-size:28px">📁</span><span style="font-size:11px">Pictures</span></div>
+                    <div class="fm-item" onclick="openWindow('calc-win')"><span style="font-size:28px">🧮</span><span style="font-size:11px">calculator.app</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminal Window -->
+        <div class="window" id="terminal-win" style="top: 20%; left: 25%;">
+            <div class="window-header" onmousedown="dragStart(event, 'terminal-win')">
+                <div class="window-title">Alpine Terminal CLI</div>
+                <div class="window-controls">
+                    <span class="control-btn btn-close" onclick="closeWindow('terminal-win')"></span>
+                </div>
+            </div>
+            <div class="window-body terminal-body">
+                <div id="terminal-output">DESERT OS (Alpine Core v3.18)<br>Type 'help' or 'apk update' to test CLI commands.<br>----------------------------------------</div>
+                <div style="display: flex; margin-top: 8px;">
+                    <span>desert-os:~# &nbsp;</span>
+                    <input type="text" id="term-input" class="terminal-input" onkeydown="runCommand(event)">
+                </div>
+            </div>
+        </div>
+
+        <!-- Browser Simulator -->
+        <div class="window" id="browser-win" style="top: 12%; left: 18%;">
+            <div class="window-header" onmousedown="dragStart(event, 'browser-win')">
+                <div class="window-title">Desert Web Browser</div>
+                <div class="window-controls">
+                    <span class="control-btn btn-close" onclick="closeWindow('browser-win')"></span>
+                </div>
+            </div>
+            <div style="padding: 6px 10px; background: rgba(0,0,0,0.3); display: flex; gap: 8px;">
+                <input type="text" id="browser-url" value="https://wikipedia.org" style="flex-grow:1; padding: 4px 10px; border-radius: 4px; border: none; background: #222; color: #fff; font-size: 12px;">
+                <button onclick="loadWebPage()" style="padding: 4px 12px; background: #e67e22; border: none; color: white; border-radius: 4px; font-size: 11px;">Go</button>
+            </div>
+            <div class="window-body" style="padding: 0;" id="browser-container">
+                <iframe id="browser-frame" src="https://wikipedia.org" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+        </div>
+
+        <!-- Lightweight Pong Game -->
+        <div class="window" id="pong-win" style="top: 18%; left: 28%; width: 400px; height: 320px;">
+            <div class="window-header" onmousedown="dragStart(event, 'pong-win')">
+                <div class="window-title">🏓 Classic Pong</div>
+                <div class="window-controls">
+                    <span class="control-btn btn-close" onclick="closeWindow('pong-win')"></span>
+                </div>
+            </div>
+            <div class="window-body" style="align-items: center; justify-content: center; background: #0b0907; padding: 0;">
+                <canvas id="pongCanvas" width="380" height="240" style="background: #111; border: 1px solid #e67e22; border-radius:4px;"></canvas>
+            </div>
+        </div>
+
+        <!-- System Monitor -->
+        <div class="window" id="monitor-win" style="top: 22%; left: 30%; width: 400px; height: 280px;">
+            <div class="window-header" onmousedown="dragStart(event, 'monitor-win')">
+                <div class="window-title">System Monitor</div>
+                <div class="window-controls">
+                    <span class="control-btn btn-close" onclick="closeWindow('monitor-win')"></span>
+                </div>
+            </div>
+            <div class="window-body">
+                <div style="font-size: 12px; margin-bottom: 8px;">CPU Usage: <span id="cpu-text">12%</span></div>
+                <canvas id="cpuChart" width="360" height="80" style="background: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;"></canvas>
+                <div style="font-size: 12px; margin: 12px 0 8px;">RAM Allocation: 115 MB / 512 MB (Virtual)</div>
+                <div style="width: 100%; background: #222; height: 12px; border-radius: 6px; overflow: hidden;">
+                    <div style="width: 22%; background: #e67e22; height: 100%;"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Dock -->
+    <div class="dock-container">
+        <div class="dock">
+            <div class="dock-icon" onclick="toggleStartMenu(event)">🏜️</div>
+            <div class="dock-icon" onclick="openWindow('settings-win')">⚙️</div>
+            <div class="dock-icon" onclick="openWindow('files-win')">📁</div>
+            <div class="dock-icon" onclick="openWindow('calc-win')">🧮</div>
+            <div class="dock-icon" onclick="openWindow('terminal-win')">🖥️</div>
+            <div class="dock-icon" onclick="openWindow('browser-win')">🌐</div>
+            <div class="dock-icon" onclick="openWindow('pong-win')">🏓</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let isOnline = true;
+
+    // Working Live Clock
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clock').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Working Network Status Monitor
+    function updateNetworkStatus() {
+        const statusElem = document.getElementById('network-status');
+        if (navigator.onLine && isOnline) {
+            statusElem.innerText = "📶 Online";
+            statusElem.style.color = "#f0e6d2";
+        } else {
+            statusElem.innerText = "🚫 Offline";
+            statusElem.style.color = "#ff5f56";
+        }
+    }
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+
+    // Working Battery API
+    if (navigator.getBattery) {
+        navigator.getBattery().then(battery => {
+            function updateBattery() {
+                const level = Math.round(battery.level * 100);
+                const charging = battery.charging ? "⚡" : "🔋";
+                document.getElementById('battery-status').innerText = `${charging} ${level}%`;
+            }
+            updateBattery();
+            battery.addEventListener('levelchange', updateBattery);
+            battery.addEventListener('chargingchange', updateBattery);
+        });
+    }
+
+    // Toggle Start Menu
+    function toggleStartMenu(e) {
+        if(e) e.stopPropagation();
+        document.getElementById('startMenu').classList.toggle('show');
+    }
+    document.addEventListener('click', () => {
+        document.getElementById('startMenu').classList.remove('show');
+    });
+
+    // Window Management & Stacking
+    let topZ = 100;
+    function openWindow(id) {
+        const win = document.getElementById(id);
+        win.style.display = 'flex';
+        win.style.zIndex = ++topZ;
+        if(id === 'pong-win') initPong();
+    }
+
+    function closeWindow(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    // Window Dragging
+    let activeWin = null, offsetX = 0, offsetY = 0;
+    function dragStart(e, id) {
+        activeWin = document.getElementById(id);
+        activeWin.style.zIndex = ++topZ;
+        offsetX = e.clientX - activeWin.offsetLeft;
+        offsetY = e.clientY - activeWin.offsetTop;
+        document.addEventListener('mousemove', dragging);
+        document.addEventListener('mouseup', dragEnd);
+    }
+
+    function dragging(e) {
+        if (!activeWin) return;
+        activeWin.style.left = (e.clientX - offsetX) + 'px';
+        activeWin.style.top = (e.clientY - offsetY) + 'px';
+    }
+
+    function dragEnd() {
+        activeWin = null;
+        document.removeEventListener('mousemove', dragging);
+        document.removeEventListener('mouseup', dragEnd);
+    }
+
+    // Settings Functions
+    function toggleInternetSetting() {
+        isOnline = document.getElementById('internet-toggle').checked;
+        updateNetworkStatus();
+        const container = document.getElementById('browser-container');
+        if(!isOnline) {
+            container.innerHTML = '<div style="padding:40px; text-align:center; color:#ff5f56;"><h3>🚫 No Internet Connection</h3><p style="margin-top:10px; font-size:12px; color:#aaa;">Turn on internet connection in Settings app.</p></div>';
+        } else {
+            container.innerHTML = '<iframe id="browser-frame" src="https://wikipedia.org" style="width: 100%; height: 100%; border: none;"></iframe>';
+        }
+    }
+
+    const wallpapers = [
+        'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1920&q=80',
+        'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1920&q=80',
+        'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80'
+    ];
+    function setWallpaper(idx) {
+        document.getElementById('os-wrapper').style.backgroundImage = `url('${wallpapers[idx]}')`;
+    }
+
+    // Calculator Logic
+    let calcVal = "";
+    function calcInput(ch) {
+        if(calcVal === "0") calcVal = "";
+        calcVal += ch;
+        document.getElementById('calc-display').value = calcVal;
+    }
+    function calcClear() {
+        calcVal = "0";
+        document.getElementById('calc-display').value = calcVal;
+    }
+    function calcEval() {
+        try {
+            calcVal = eval(calcVal).toString();
+            document.getElementById('calc-display').value = calcVal;
+        } catch(e) {
+            document.getElementById('calc-display').value = "Error";
+            calcVal = "";
+        }
+    }
+
+    // Terminal Commands
+    function runCommand(e) {
+        if (e.key === 'Enter') {
+            const input = document.getElementById('term-input');
+            const output = document.getElementById('terminal-output');
+            const cmd = input.value.trim();
+            
+            let res = '';
+            if (cmd === 'help') res = 'Commands: help, clear, date, apk update, uname -a, ls, whoami';
+            else if (cmd === 'clear') { output.innerHTML = ''; input.value = ''; return; }
+            else if (cmd === 'date') res = new Date().toString();
+            else if (cmd === 'whoami') res = 'root (desert-core)';
+            else if (cmd === 'uname -a') res = 'Linux desert-os 6.1.0-alpine-virt x86_64 GNU/Linux';
+            else if (cmd === 'ls') res = 'Documents  Downloads  Pictures  calculator.app';
+            else if (cmd === 'apk update') res = 'OK: 14500 distinct packages available';
+            else if (cmd !== '') res = `sh: command not found: ${cmd}`;
+
+            if (cmd !== '') {
+                output.innerHTML += `<br>desert-os:~# ${cmd}<br>${res}`;
+            }
+            input.value = '';
+        }
+    }
+
+    // Browser Simulator
+    function loadWebPage() {
+        if(!isOnline) {
+            alert("Internet is disabled in Settings!");
+            return;
+        }
+        const url = document.getElementById('browser-url').value;
+        document.getElementById('browser-frame').src = url;
+    }
+
+    // Lightweight Pong Game Logic
+    let pongLoop = null;
+    function initPong() {
+        const canvas = document.getElementById('pongCanvas');
+        const ctx = canvas.getContext('2d');
+        let paddleY = 80;
+        let ballX = 190, ballY = 120, ballSpeedX = 3, ballSpeedY = 2;
+
+        canvas.onmousemove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            paddleY = e.clientY - rect.top - 25;
+        };
+
+        if(pongLoop) clearInterval(pongLoop);
+
+        pongLoop = setInterval(() => {
+            ballX += ballSpeedX;
+            ballY += ballSpeedY;
+
+            if(ballY <= 0 || ballY >= canvas.height) ballSpeedY = -ballSpeedY;
+            
+            // Paddle Collision
+            if(ballX <= 15 && ballY >= paddleY && ballY <= paddleY + 50) {
+                ballSpeedX = -ballSpeedX;
+            }
+
+            // Reset Ball
+            if(ballX <= 0 || ballX >= canvas.width) {
+                ballX = 190; ballY = 120;
+                ballSpeedX = -ballSpeedX;
+            }
+
+            // Draw Background
+            ctx.fillStyle = "#111";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Player Paddle
+            ctx.fillStyle = "#e67e22";
+            ctx.fillRect(5, paddleY, 10, 50);
+
+            // Draw Ball
+            ctx.fillStyle = "#ffb703";
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, 6, 0, Math.PI * 2);
+            ctx.fill();
+        }, 1000/60);
+    }
+
+    // CPU System Monitor Chart
+    const canvas = document.getElementById('cpuChart');
+    const ctx = canvas.getContext('2d');
+    let points = Array(30).fill(10);
+
+    setInterval(() => {
+        const val = Math.floor(Math.random() * 25) + 10;
+        document.getElementById('cpu-text').innerText = val + '%';
+        points.push(val);
+        points.shift();
+
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, 360, 80);
+
+        ctx.strokeStyle = '#e67e22';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        points.forEach((p, i) => {
+            const x = i * (360 / 29);
+            const y = 80 - (p / 100 * 80);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+    }, 1000);
+</script>
+
+</body>
+</html>
